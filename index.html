@@ -353,7 +353,7 @@ function drawChart(k, ids) {
     return v > 0 ? [{ t: Date.parse(w.date + "T12:00:00"), v }] : [];
   }).sort((a, b) => a.t - b.t) })).filter(s => s.pts.length);
   const all = series.flatMap(s => s.pts);
-  const W = 640, H = 260, L = 48, R = 18, T = 14, B = 30;
+  const W = Math.round(Math.min(640, Math.max(300, $("#chart").clientWidth || 640))), H = 240, L = 44, R = 14, T = 14, B = 30;
   let t0 = Math.min(...all.map(p => p.t)), t1 = Math.max(...all.map(p => p.t));
   if (t0 === t1) { t0 -= 3 * 864e5; t1 += 3 * 864e5; }
   let vMin = Math.min(...all.map(p => p.v)), vMax = Math.max(...all.map(p => p.v));
@@ -439,6 +439,7 @@ $("#logForm").addEventListener("submit", async e => {
 
 /* ---------- feed + misc events ---------- */
 $("#filters").addEventListener("click", e => { const b = e.target.closest("[data-filter]"); if (b) { state.filter = b.dataset.filter; render(); } });
+let resizeT; window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
 $("#chartEx").onchange = e => { state.chartEx = e.target.value; render(); };
 $("#feed").addEventListener("click", async e => {
   const b = e.target.closest("[data-del]"); if (!b) return;

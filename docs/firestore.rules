@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The crew: only these emails can read or write the log. Use lowercase.
+    function crew() {
+      return request.auth != null
+        && request.auth.token.email.lower() in ['you@example.com', 'yourbro@example.com'];
+    }
+
+    match /workouts/{id} {
+      allow read: if crew();
+      allow create: if crew() && request.resource.data.by == request.auth.uid;
+      allow delete: if crew() && resource.data.by == request.auth.uid;
+    }
+
+    match /lifters/{uid} {
+      allow read: if crew();
+      allow write: if crew() && uid == request.auth.uid;
+    }
+  }
+}

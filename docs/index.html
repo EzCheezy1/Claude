@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spot Me</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#15181c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spot Me">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: two-column gym whiteboard (log + feed | scoreboard + chart), stacks on phones.
+   Lifters wear Olympic bumper-plate colors: red 25, blue 20, yellow 15, green 10. */
+:root {
+  --bg: #eceef1; --surface: #ffffff; --sunken: #f5f6f8; --ink: #15181c; --muted: #5a636d; --line: #d3d8de;
+  --p1: #c41e2c; --p2: #1d5bb8; --p3: #b88a00; --p4: #2b8545;
+  --good: #2b8545; --warn: #b4232f;
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111315; --surface: #1a1d21; --sunken: #15181b; --ink: #eef0f3; --muted: #97a0aa; --line: #2b3036;
+  --p1: #ff5a62; --p2: #5c9bff; --p3: #f0c02e; --p4: #4cc276; --good: #4cc276; --warn: #ff6b72; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111315; --surface: #1a1d21; --sunken: #15181b; --ink: #eef0f3; --muted: #97a0aa; --line: #2b3036;
+  --p1: #ff5a62; --p2: #5c9bff; --p3: #f0c02e; --p4: #4cc276; --good: #4cc276; --warn: #ff6b72; color-scheme: dark }
+
+* { box-sizing: border-box }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg) }
+[hidden] { display: none !important }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); -webkit-text-size-adjust: 100% }
+img { max-width: 100% }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .01em; margin: 0; text-wrap: balance }
+h1 { font-size: clamp(40px, 8vw, 64px); line-height: .9 }
+h2 { font-size: 24px; line-height: 1 }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.muted { color: var(--muted) }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 3px solid var(--ink); margin-bottom: 20px }
+header.top .sub { margin-top: 6px; color: var(--muted) }
+.lifters { display: flex; flex-wrap: wrap; gap: 8px }
+.lifter { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 6px }
+.plate { width: 30px; height: 30px; border-radius: 50%; background: var(--c); display: grid; place-items: center; flex: none; box-shadow: inset 0 0 0 4px rgba(0,0,0,.18) }
+.plate::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--surface) }
+.plate.sm { width: 14px; height: 14px; box-shadow: none } .plate.sm::after { display: none }
+.lifter b { display: block; line-height: 1.1 }
+.lifter span { font-size: 12px; color: var(--muted) }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } }
+.col { display: flex; flex-direction: column; gap: 24px; min-width: 0 }
+section.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px; min-width: 0 }
+.sec-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px }
+
+button, input, select { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--p2); outline-offset: 2px }
+.btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 4px; padding: 9px 16px; font-weight: 600 }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line) }
+.btn.ghost:hover { border-color: var(--ink) }
+.btn.small { padding: 5px 10px; font-size: 13px }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.link { background: none; border: 0; padding: 4px 6px; color: var(--muted); font-size: 13px; border-radius: 4px }
+.link:hover { color: var(--ink) }
+.link.danger { color: var(--warn) }
+input, select { background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-width: 0; width: 100% }
+input:focus, select:focus { border-color: var(--ink); outline: none }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+
+/* log form */
+.row2 { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; margin-bottom: 14px }
+@media (max-width: 420px) { .row2 { grid-template-columns: minmax(0, 1fr) } }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+.ex { border: 1px solid var(--line); border-left: 4px solid var(--ink); border-radius: 4px; padding: 12px; margin-bottom: 10px; background: var(--sunken) }
+.ex-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px }
+.ex-head input { font-weight: 600; background: var(--surface) }
+.sets { display: grid; grid-template-columns: 34px minmax(0, 1fr) 14px minmax(0, 1fr) 30px; gap: 6px 8px; align-items: center }
+.sets .hd { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em }
+.sets input { text-align: center; background: var(--surface); font-family: var(--mono) }
+.sets .n { font-family: var(--mono); color: var(--muted); font-size: 13px; text-align: center }
+.sets .x { color: var(--muted); text-align: center }
+.form-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 12px }
+
+/* feed */
+.feed { display: flex; flex-direction: column; gap: 12px }
+.wo { border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+.wo-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--sunken); border-bottom: 1px solid var(--line); flex-wrap: wrap }
+.wo-head .who { font-weight: 600 }
+.wo-head .title { font-family: var(--display); font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: .02em }
+.wo-head .date { margin-left: auto; font-size: 13px; color: var(--muted) }
+.wo-body { padding: 8px 12px 10px }
+.wo-ex { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 6px 0; border-bottom: 1px dashed var(--line) }
+.wo-ex:last-child { border-bottom: 0 }
+.wo-ex .name { font-weight: 500 }
+.wo-ex .setlist { grid-column: 1 / -1; font-family: var(--mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+.wo-ex .e1 { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap }
+.pr { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .08em; padding: 1px 6px; border-radius: 3px; background: var(--p3); color: #15181c; margin-left: 6px; vertical-align: 2px }
+.wo-foot { display: flex; justify-content: flex-end; padding: 0 8px 6px }
+
+/* scoreboard */
+.tbl-wrap { overflow-x: auto }
+table { width: 100%; border-collapse: collapse; font-size: 14px }
+th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap }
+th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+td.v { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums }
+th.v { text-align: right }
+td.lead { font-weight: 700 }
+td.lead::after { content: " ▲"; color: var(--good); font-size: 11px }
+td .sub { display: block; font-size: 11px; color: var(--muted); font-weight: 400 }
+
+/* chart */
+.chart svg { width: 100%; height: auto; display: block }
+.chart .axis { fill: var(--muted); font: 11px var(--mono) }
+.chart .grid-l { stroke: var(--line); stroke-width: 1 }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 13px }
+.legend span { display: inline-flex; align-items: center; gap: 6px }
+
+.empty { border: 2px dashed var(--line); border-radius: 6px; padding: 22px; text-align: center; color: var(--muted) }
+.empty strong { display: block; color: var(--ink); font-family: var(--display); font-size: 22px; text-transform: uppercase; margin-bottom: 4px }
+.banner { border: 1px solid var(--line); border-left: 4px solid var(--p3); background: var(--surface); border-radius: 4px; padding: 10px 14px; margin-bottom: 20px; font-size: 14px }
+.onboard { display: flex; flex-wrap: wrap; gap: 8px; align-items: end }
+.onboard .field { flex: 1 1 200px }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 4px; font-size: 14px; max-width: calc(100% - 32px); z-index: 20 }
+@media (prefers-reduced-motion: no-preference) { .wo { animation: in .25s ease-out } @keyframes in { from { transform: translateY(4px) } } }
+.auth { max-width: 420px; margin: 8px auto 24px }
+.auth form { display: flex; flex-direction: column; gap: 12px }
+.auth .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.auth .err { color: var(--warn); font-size: 14px; margin: 0 }
+.acct { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin: -10px 0 14px; flex-wrap: wrap }
+input { font-size: 16px } /* stops iOS zooming into fields */
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Spot Me</h1>
+      <div class="sub">Shared lift log. Every set, every PR, both of you.</div>
+    </div>
+    <div class="lifters" id="lifters"></div>
+  </header>
+
+  <div class="acct" id="acct" hidden><span id="acctEmail"></span><button class="link" type="button" id="signOut">Sign out</button></div>
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="card auth" id="auth" hidden>
+    <div class="sec-head"><h2>Sign in</h2></div>
+    <form id="authForm">
+      <div class="field"><label class="label" for="authEmail">Email</label>
+        <input id="authEmail" type="email" autocomplete="email" required></div>
+      <div class="field"><label class="label" for="authPass">Password</label>
+        <input id="authPass" type="password" autocomplete="current-password" minlength="6" required></div>
+      <p class="err" id="authErr" hidden></p>
+      <div class="actions">
+        <button class="btn" type="submit" id="signInBtn">Sign in</button>
+        <button class="btn ghost" type="button" id="signUpBtn">Create account</button>
+        <button class="link" type="button" id="resetBtn">Forgot password?</button>
+      </div>
+      <p class="muted" style="margin:0;font-size:13px">First time? Enter your email, pick a password (6+ characters), and tap Create account. Only emails on the crew list can see the log.</p>
+    </form>
+  </section>
+
+  <section class="card" id="onboard" hidden style="margin-bottom:24px">
+    <div class="sec-head"><h2>Who's lifting?</h2></div>
+    <form class="onboard" id="nickForm">
+      <div class="field"><label class="label" for="nick">Your name on the board</label>
+        <input id="nick" maxlength="24" placeholder="e.g. Corbin" autocomplete="off" required></div>
+      <button class="btn" type="submit">Join the log</button>
+    </form>
+  </section>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card" id="logCard">
+        <div class="sec-head">
+          <h2>Log a workout</h2>
+          <button class="btn small" id="openLog" type="button">New workout</button>
+        </div>
+        <form id="logForm" hidden>
+          <div class="row2">
+            <div class="field"><label class="label" for="wDate">Date</label><input id="wDate" type="date" required></div>
+            <div class="field"><label class="label" for="wTitle">Session</label><input id="wTitle" maxlength="40" placeholder="Push day, Legs, Upper…" list="titleList" autocomplete="off"></div>
+          </div>
+          <div id="exList"></div>
+          <button class="btn ghost small" type="button" id="addEx">+ Add exercise</button>
+          <div class="form-actions">
+            <button class="link" type="button" id="cancelLog">Discard</button>
+            <button class="btn" type="submit" id="saveLog">Save workout</button>
+          </div>
+        </form>
+        <p class="muted" id="logHint" style="margin:0">Weights in lb. Log each working set as weight × reps; use 0 for bodyweight.</p>
+      </section>
+
+      <section class="card">
+        <div class="sec-head">
+          <h2>Recent sessions</h2>
+          <div class="chips" id="filters"></div>
+        </div>
+        <div class="feed" id="feed"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card">
+        <div class="sec-head"><h2>Head to head</h2><span class="label">Best est. 1RM · lb</span></div>
+        <div id="board"></div>
+      </section>
+      <section class="card chart">
+        <div class="sec-head">
+          <h2>Progress</h2>
+          <select id="chartEx" aria-label="Exercise" style="width:auto;max-width:100%"></select>
+        </div>
+        <div id="chart"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<datalist id="exNames"></datalist>
+<datalist id="titleList"><option value="Push"><option value="Pull"><option value="Legs"><option value="Upper"><option value="Lower"><option value="Full body"><option value="Arms"></datalist>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const PLATES = ["var(--p1)", "var(--p2)", "var(--p3)", "var(--p4)"];
+const COMMON = ["Bench Press", "Incline Bench Press", "Squat", "Front Squat", "Deadlift", "Romanian Deadlift", "Overhead Press", "Barbell Row", "Pull-up", "Lat Pulldown", "Dumbbell Press", "Leg Press", "Hip Thrust", "Barbell Curl", "Tricep Pushdown", "Lateral Raise", "Dip"];
+const LOCAL_KEY = "spotme-local-v1", DRAFT_KEY = "spotme-draft-v1";
+
+const state = { mode: "loading", me: null, canWrite: true, lifters: {}, workouts: [], filter: "all", chartEx: "" };
+let api = null, draft = null;
+
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const e1rm = (w, r) => (r > 0 && w >= 0) ? (r === 1 ? w : w * (1 + r / 30)) : 0;
+const key = n => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const fmtW = w => (Math.round(w * 10) / 10).toString();
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200);
+}
+function safeLS(fn) { try { return fn(); } catch { return null; } }
+
+/* ---------- lifters ---------- */
+function lifterOrder() {
+  const ids = Object.keys(state.lifters).sort((a, b) => (state.lifters[a].joined || 0) - (state.lifters[b].joined || 0));
+  for (const w of state.workouts) if (!ids.includes(w.by)) ids.push(w.by);
+  return ids;
+}
+const color = id => PLATES[Math.max(0, lifterOrder().indexOf(id)) % PLATES.length];
+const nick = id => state.lifters[id]?.nick || (id === state.me ? "You" : "Lifter");
+
+/* ---------- data connection ---------- */
+const AUTH_MSG = {
+  "auth/invalid-credential": "Wrong email or password.", "auth/wrong-password": "Wrong email or password.",
+  "auth/user-not-found": "No account with that email yet. Tap Create account.",
+  "auth/email-already-in-use": "That email already has an account. Tap Sign in instead.",
+  "auth/weak-password": "Pick a password with at least 6 characters.", "auth/invalid-email": "That email address doesn't look right.",
+  "auth/too-many-requests": "Too many tries. Wait a minute and try again.", "auth/network-request-failed": "No connection. Check your signal and try again.",
+};
+function authError(e) { const el = $("#authErr"); el.textContent = AUTH_MSG[e?.code] || "Something went wrong. Try again."; el.hidden = false; }
+
+async function connect() {
+  const cfg = window.SPOTME_FIREBASE;
+  if (cfg?.apiKey && window.firebase) {
+    firebase.initializeApp(cfg);
+    const auth = firebase.auth(), fs = firebase.firestore();
+    try { await fs.enablePersistence({ synchronizeTabs: true }); } catch {}
+    let unsubs = [];
+    auth.onAuthStateChanged(u => {
+      unsubs.forEach(f => f()); unsubs = [];
+      state.lifters = {}; state.workouts = []; $("#banner").hidden = true;
+      $("#acct").hidden = !u; $("#acctEmail").textContent = u?.email || "";
+      if (!u) { state.mode = "signedout"; state.me = null; state.canWrite = false; render(); return; }
+      state.mode = "shared"; state.me = u.uid; state.canWrite = true;
+      const onErr = e => {
+        if (e?.code === "permission-denied") { state.canWrite = false; showBanner(`${u.email} isn't on this log's crew list yet. Ask whoever set up Spot Me to add it, then reopen the app.`); }
+        else showBanner("Live sync stopped. Reopen the app to reconnect.");
+        render();
+      };
+      unsubs.push(
+        fs.collection("lifters").onSnapshot(s => { state.lifters = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); render(); }, onErr),
+        fs.collection("workouts").orderBy("date", "desc").limit(1000).onSnapshot(s => {
+          state.workouts = s.docs.map(d => ({ id: d.id, ...d.data() })); render();
+        }, onErr));
+      render();
+    });
+    api = {
+      save: w => fs.collection("workouts").add(w),
+      remove: id => fs.doc("workouts/" + id).delete(),
+      setNick: n => fs.doc("lifters/" + state.me).set({ nick: n, joined: state.lifters[state.me]?.joined || Date.now() }),
+    };
+    const creds = () => [$("#authEmail").value.trim(), $("#authPass").value];
+    $("#authForm").addEventListener("submit", e => { e.preventDefault(); $("#authErr").hidden = true; auth.signInWithEmailAndPassword(...creds()).catch(authError); });
+    $("#signUpBtn").onclick = () => { if (!$("#authForm").reportValidity()) return; $("#authErr").hidden = true; auth.createUserWithEmailAndPassword(...creds()).catch(authError); };
+    $("#resetBtn").onclick = () => {
+      const email = $("#authEmail").value.trim(); if (!email) return authError({ code: "auth/invalid-email" });
+      auth.sendPasswordResetEmail(email).then(() => toast("Reset link sent. Check your email.")).catch(authError);
+    };
+    $("#signOut").onclick = () => auth.signOut();
+  } else if (cfg?.apiKey) {
+    showBanner("Couldn't reach the sync server. Reopen the app when you have signal.");
+  } else {
+    state.mode = "local"; state.me = "local";
+    const load = () => safeLS(() => JSON.parse(localStorage.getItem(LOCAL_KEY))) || { lifters: {}, workouts: [] };
+    const persist = d => { safeLS(() => localStorage.setItem(LOCAL_KEY, JSON.stringify(d))); Object.assign(state, d); render(); };
+    Object.assign(state, load());
+    api = {
+      save: async w => { const d = load(); d.workouts.unshift({ id: "w" + Date.now(), ...w }); d.workouts.sort((a, b) => b.date.localeCompare(a.date)); persist(d); },
+      remove: async id => { const d = load(); d.workouts = d.workouts.filter(w => w.id !== id); persist(d); },
+      setNick: async n => { const d = load(); d.lifters.local = { nick: n, joined: Date.now() }; persist(d); },
+    };
+    showBanner("Sync isn't set up yet, so workouts save on this phone only.");
+  }
+  render();
+}
+function showBanner(t) { const b = $("#banner"); b.textContent = t; b.hidden = false; }
+
+/* ---------- derived stats ---------- */
+function stats() {
+  const names = {}, best = {}, prSets = new Set();
+  const asc = [...state.workouts].sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
+  for (const w of asc) for (const [i, ex] of (w.exercises || []).entries()) {
+    const k = key(ex.name); if (!k) continue;
+    names[k] ??= ex.name.trim();
+    let top = null;
+    for (const s of ex.sets || []) { const v = e1rm(+s.w, +s.r); if (v > 0 && (!top || v > top.v)) top = { v, w: +s.w, r: +s.r }; }
+    if (!top) continue;
+    best[k] ??= {};
+    const prev = best[k][w.by];
+    if (!prev || top.v > prev.v) { if (prev) prSets.add(w.id + ":" + i); best[k][w.by] = { ...top, date: w.date }; }
+  }
+  return { names, best, prSets };
+}
+
+/* ---------- render ---------- */
+function render() {
+  const ids = lifterOrder(), st = stats();
+  const weekAgo = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+
+  // lifter chips
+  $("#lifters").innerHTML = ids.length ? ids.map(id => {
+    const mine = state.workouts.filter(w => w.by === id);
+    const wk = mine.filter(w => w.date >= weekAgo).length;
+    return `<div class="lifter"><span class="plate" style="--c:${color(id)}"></span><div><b>${esc(nick(id))}${id === state.me ? ' <span>(you)</span>' : ""}</b><span class="num">${wk} this week · ${mine.length} total</span></div></div>`;
+  }).join("") : "";
+
+  // onboarding + log access
+  const needsNick = state.mode !== "loading" && state.canWrite && state.me && !state.lifters[state.me];
+  $("#onboard").hidden = !needsNick;
+  $("#auth").hidden = state.mode !== "signedout";
+  $("#logCard").hidden = !state.canWrite || state.mode === "loading";
+  $("#openLog").disabled = needsNick;
+
+  // filters
+  const opts = [["all", "Everyone"], ...ids.map(id => [id, nick(id)])];
+  if (!opts.some(o => o[0] === state.filter)) state.filter = "all";
+  $("#filters").innerHTML = ids.length > 1 ? opts.map(([v, l]) =>
+    `<button class="chip" type="button" data-filter="${esc(v)}" aria-pressed="${state.filter === v}">${v !== "all" ? `<span class="plate sm" style="--c:${color(v)}"></span>` : ""}${esc(l)}</button>`).join("") : "";
+
+  // feed
+  const list = state.workouts.filter(w => state.filter === "all" || w.by === state.filter).slice(0, 40);
+  $("#feed").innerHTML = state.mode === "loading" ? `<div class="empty">Loading the log…</div>` : state.mode === "signedout" ? `<div class="empty">Sign in to see the log.</div>` : list.length ? list.map(w => `
+    <article class="wo">
+      <div class="wo-head"><span class="plate sm" style="--c:${color(w.by)}"></span><span class="who">${esc(nick(w.by))}</span>
+        <span class="title">${esc(w.title || "Workout")}</span><span class="date">${fmtDate(w.date)}</span></div>
+      <div class="wo-body">${(w.exercises || []).map((ex, i) => {
+        const sets = (ex.sets || []).filter(s => +s.r > 0);
+        const top = Math.max(0, ...sets.map(s => e1rm(+s.w, +s.r)));
+        return `<div class="wo-ex"><span class="name">${esc(ex.name)}${st.prSets.has(w.id + ":" + i) ? '<span class="pr">PR</span>' : ""}</span>
+          <span class="e1 num">${top ? "e1RM " + Math.round(top) : ""}</span>
+          <span class="setlist">${sets.map(s => +s.w ? `${fmtW(+s.w)}×${+s.r}` : `BW×${+s.r}`).join("  ·  ")}</span></div>`;
+      }).join("")}</div>
+      ${w.by === state.me && state.canWrite ? `<div class="wo-foot"><button class="link danger" type="button" data-del="${esc(w.id)}">Delete</button></div>` : ""}
+    </article>`).join("") : `<div class="empty"><strong>No sessions yet</strong>Hit “New workout”, add your sets, and save. Your bro's sessions show up here live.</div>`;
+
+  // datalist of exercise names
+  $("#exNames").innerHTML = [...new Set([...Object.values(st.names), ...COMMON])].map(n => `<option value="${esc(n)}">`).join("");
+
+  // scoreboard
+  const exKeys = Object.keys(st.best).sort((a, b) => Object.keys(st.best[b]).length - Object.keys(st.best[a]).length || st.names[a].localeCompare(st.names[b]));
+  $("#board").innerHTML = exKeys.length ? `<div class="tbl-wrap"><table><thead><tr><th>Lift</th>${ids.map(id => `<th class="v"><span class="plate sm" style="--c:${color(id)};display:inline-grid;vertical-align:-2px"></span> ${esc(nick(id))}</th>`).join("")}</tr></thead><tbody>${
+    exKeys.map(k => {
+      const row = st.best[k], vals = ids.map(id => row[id]?.v || 0), lead = Math.max(...vals);
+      const multi = vals.filter(Boolean).length > 1;
+      return `<tr><td>${esc(st.names[k])}</td>${ids.map((id, j) => {
+        const b = row[id];
+        return b ? `<td class="v${multi && b.v === lead ? " lead" : ""}">${Math.round(b.v)}<span class="sub">${b.w ? fmtW(b.w) : "BW"}×${b.r}</span></td>` : `<td class="v muted">—</td>`;
+      }).join("")}</tr>`;
+    }).join("")}</tbody></table></div>` : `<div class="empty"><strong>Board's empty</strong>Log a set and your best estimated one-rep max for each lift lands here, side by side.</div>`;
+
+  // chart exercise picker
+  const sel = $("#chartEx");
+  if (!st.best[state.chartEx]) state.chartEx = exKeys[0] || "";
+  sel.innerHTML = exKeys.map(k => `<option value="${esc(k)}"${k === state.chartEx ? " selected" : ""}>${esc(st.names[k])}</option>`).join("");
+  sel.hidden = !exKeys.length;
+  $("#chart").innerHTML = drawChart(state.chartEx, ids);
+}
+
+function niceStep(range) {
+  const raw = range / 4, mag = 10 ** Math.floor(Math.log10(raw || 1)), n = raw / mag;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+}
+function drawChart(k, ids) {
+  if (!k) return `<div class="empty"><strong>Nothing to plot</strong>Once you log a lift twice, you'll see the trend line here.</div>`;
+  const series = ids.map(id => ({ id, pts: state.workouts.filter(w => w.by === id).flatMap(w => {
+    const v = Math.max(0, ...(w.exercises || []).filter(e => key(e.name) === k).flatMap(e => (e.sets || []).map(s => e1rm(+s.w, +s.r))));
+    return v > 0 ? [{ t: Date.parse(w.date + "T12:00:00"), v }] : [];
+  }).sort((a, b) => a.t - b.t) })).filter(s => s.pts.length);
+  const all = series.flatMap(s => s.pts);
+  const W = Math.round(Math.min(640, Math.max(300, $("#chart").clientWidth || 640))), H = 240, L = 44, R = 14, T = 14, B = 30;
+  let t0 = Math.min(...all.map(p => p.t)), t1 = Math.max(...all.map(p => p.t));
+  if (t0 === t1) { t0 -= 3 * 864e5; t1 += 3 * 864e5; }
+  let vMin = Math.min(...all.map(p => p.v)), vMax = Math.max(...all.map(p => p.v));
+  if (vMax - vMin < 10) { vMin -= 10; vMax += 10; }
+  const step = niceStep(vMax - vMin), y0 = Math.max(0, Math.floor(vMin / step) * step), y1 = Math.ceil(vMax / step) * step;
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  let g = "";
+  for (let v = y0; v <= y1 + 1e-9; v += step) g += `<line class="grid-l" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${Math.round(v)}</text>`;
+  const days = (t1 - t0) / 864e5, nx = Math.min(4, Math.max(1, Math.round(days)));
+  for (let i = 0; i <= nx; i++) {
+    const t = t0 + (t1 - t0) * i / nx;
+    g += `<text class="axis" x="${x(t)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === nx ? "end" : "middle"}">${new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</text>`;
+  }
+  for (const s of series) {
+    const c = color(s.id), d = s.pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+    g += `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    g += s.pts.map((p, i) => `<circle cx="${x(p.t).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${i === s.pts.length - 1 ? 5 : 3}" fill="${i === s.pts.length - 1 ? c : "var(--surface)"}" stroke="${c}" stroke-width="2"><title>${esc(nick(s.id))}: ${Math.round(p.v)} lb</title></circle>`).join("");
+  }
+  const legend = series.map(s => { const last = s.pts[s.pts.length - 1].v, first = s.pts[0].v, dlt = Math.round(last - first);
+    return `<span><span class="plate sm" style="--c:${color(s.id)}"></span>${esc(nick(s.id))} <b class="num">${Math.round(last)}</b><span class="muted num">${s.pts.length > 1 ? `(${dlt >= 0 ? "+" : ""}${dlt})` : ""}</span></span>`; }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Estimated one-rep max over time">${g}</svg><div class="legend">${legend}</div>`;
+}
+
+/* ---------- log form ---------- */
+const blankEx = () => ({ name: "", sets: [{ w: "", r: "" }] });
+function saveDraft() { safeLS(() => localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))); }
+function openForm() {
+  draft = safeLS(() => JSON.parse(localStorage.getItem(DRAFT_KEY))) || { date: today(), title: "", exercises: [blankEx()] };
+  $("#wDate").value = draft.date; $("#wTitle").value = draft.title;
+  drawForm(); $("#logForm").hidden = false; $("#openLog").hidden = true; $("#logHint").hidden = true;
+}
+function closeForm() { draft = null; safeLS(() => localStorage.removeItem(DRAFT_KEY)); $("#logForm").hidden = true; $("#openLog").hidden = false; $("#logHint").hidden = false; }
+function drawForm(focus) {
+  $("#exList").innerHTML = draft.exercises.map((ex, i) => `
+    <div class="ex">
+      <div class="ex-head"><input id="ex-${i}" data-ex="${i}" data-f="name" list="exNames" placeholder="Exercise" value="${esc(ex.name)}" autocomplete="off" aria-label="Exercise ${i + 1} name">
+        ${draft.exercises.length > 1 ? `<button class="link danger" type="button" data-rmex="${i}" aria-label="Remove exercise">Remove</button>` : ""}</div>
+      <div class="sets"><span class="hd">Set</span><span class="hd" style="text-align:center">Weight</span><span></span><span class="hd" style="text-align:center">Reps</span><span></span>
+      ${ex.sets.map((s, j) => `<span class="n">${j + 1}</span>
+        <input id="w-${i}-${j}" data-ex="${i}" data-set="${j}" data-f="w" inputmode="decimal" placeholder="lb" value="${esc(s.w)}" aria-label="Set ${j + 1} weight">
+        <span class="x">×</span>
+        <input id="r-${i}-${j}" data-ex="${i}" data-set="${j}" data-f="r" inputmode="numeric" placeholder="reps" value="${esc(s.r)}" aria-label="Set ${j + 1} reps">
+        ${ex.sets.length > 1 ? `<button class="link" type="button" data-rmset="${i}:${j}" aria-label="Remove set">✕</button>` : "<span></span>"}`).join("")}
+      </div>
+      <button class="link" type="button" data-addset="${i}" style="margin-top:6px">+ Add set</button>
+    </div>`).join("");
+  if (focus) $(focus)?.focus();
+}
+
+$("#openLog").onclick = openForm;
+$("#cancelLog").onclick = closeForm;
+$("#addEx").onclick = () => { draft.exercises.push(blankEx()); saveDraft(); drawForm("#ex-" + (draft.exercises.length - 1)); };
+$("#wDate").oninput = e => { draft.date = e.target.value; saveDraft(); };
+$("#wTitle").oninput = e => { draft.title = e.target.value; saveDraft(); };
+$("#exList").addEventListener("input", e => {
+  const d = e.target.dataset; if (!d.f) return;
+  const ex = draft.exercises[+d.ex];
+  if (d.f === "name") ex.name = e.target.value; else ex.sets[+d.set][d.f] = e.target.value;
+  saveDraft();
+});
+$("#exList").addEventListener("click", e => {
+  const d = e.target.closest("button")?.dataset; if (!d) return;
+  if (d.addset != null) { const ex = draft.exercises[+d.addset], last = ex.sets[ex.sets.length - 1]; ex.sets.push({ ...last }); saveDraft(); drawForm(`#r-${d.addset}-${ex.sets.length - 1}`); }
+  if (d.rmset) { const [i, j] = d.rmset.split(":").map(Number); draft.exercises[i].sets.splice(j, 1); saveDraft(); drawForm(); }
+  if (d.rmex != null) { draft.exercises.splice(+d.rmex, 1); saveDraft(); drawForm(); }
+});
+$("#logForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const exercises = draft.exercises.map(ex => ({
+    name: ex.name.trim().replace(/\s+/g, " ").slice(0, 60),
+    sets: ex.sets.map(s => ({ w: Math.max(0, parseFloat(s.w) || 0), r: Math.max(0, parseInt(s.r) || 0) })).filter(s => s.r > 0).slice(0, 30),
+  })).filter(ex => ex.name && ex.sets.length).slice(0, 25);
+  if (!draft.date) return toast("Pick a date for this workout.");
+  if (!exercises.length) return toast("Add at least one exercise with a name and a set with reps.");
+  // Firestore queues writes offline and shows them right away, so don't wait for the server.
+  const saving = api.save({ by: state.me, date: draft.date, title: draft.title.trim().slice(0, 40), exercises, createdAt: Date.now() });
+  closeForm(); toast(navigator.onLine === false ? "Saved. It'll sync when you have signal." : "Workout saved");
+  saving.catch(err => toast(err?.code === "permission-denied" ? "Couldn't save: your email isn't on this log's crew list." : "Couldn't save that workout. Try again."));
+});
+
+/* ---------- feed + misc events ---------- */
+$("#filters").addEventListener("click", e => { const b = e.target.closest("[data-filter]"); if (b) { state.filter = b.dataset.filter; render(); } });
+let resizeT; window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(render, 150); });
+$("#chartEx").onchange = e => { state.chartEx = e.target.value; render(); };
+$("#feed").addEventListener("click", async e => {
+  const b = e.target.closest("[data-del]"); if (!b) return;
+  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ""; b.textContent = "Delete"; } }, 3000); return; }
+  try { await api.remove(b.dataset.del); toast("Workout deleted"); } catch { toast("Couldn't delete that workout. Try again."); }
+});
+$("#nickForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const n = $("#nick").value.trim().slice(0, 24); if (!n) return;
+  try { await api.setNick(n); toast(`Welcome, ${n}`); }
+  catch { state.canWrite = false; showBanner("Your email isn't on this log's crew list yet. Ask whoever set up Spot Me to add it, then reopen the app."); render(); }
+});
+
+render();
+connect();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
