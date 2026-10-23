@@ -1,6 +1,6 @@
 // Network first so updates show up right away; cached copy when the gym has no signal.
-const CACHE = "spotme-v3";
-const SHELL = ["./", "index.html", "config.js", "manifest.json", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "spotme-v4";
+const SHELL = ["./", "index.html", "config.js", "manifest.json", "touch-icon-180.png", "app-icon-192.png", "app-icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
